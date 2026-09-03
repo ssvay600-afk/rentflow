@@ -62,9 +62,19 @@ src/app/api/cron/reminders  Scheduler entry point
 src/instrumentation.ts      In-process timer for the reminder agent
 ```
 
-## Going to production
+## Deploying on Vercel (free Hobby plan)
 
-- Switch Prisma's datasource to Postgres (`provider = "postgresql"`) and set `DATABASE_URL`; run `npx prisma db push`.
-- Set `APP_URL` to your public URL (used in Stripe redirects).
-- Configure a scheduler to hit `/api/cron/reminders` (e.g. Vercel Cron every 30 minutes).
-- Put the app behind your own domain; storefronts are path-based (`/s/<slug>`) so a single deployment serves every tenant.
+The app is set up for Vercel with a Neon Postgres database:
+
+1. Import the GitHub repo in Vercel (or `vercel link` + `vercel --prod`).
+2. Add a **Neon** database from the project's Storage tab. Vercel injects `DATABASE_URL` automatically.
+3. Set the other environment variables (`APP_URL`, `CRON_SECRET`, optionally `ANTHROPIC_API_KEY`, Stripe and SMTP).
+4. Create the tables and demo data once from your machine:
+   ```bash
+   vercel env pull .env.production.local
+   DATABASE_URL="<the Neon URL>" npx prisma db push
+   DATABASE_URL="<the Neon URL>" npx tsx prisma/seed.ts
+   ```
+5. `vercel.json` schedules the reminder agent daily via Vercel Cron; Vercel sends `CRON_SECRET` as a bearer token, which `/api/cron/reminders` verifies. (Hobby plans run crons once a day; upgrade for a tighter cadence or call the endpoint from any external scheduler.)
+
+Storefronts are path-based (`/s/<slug>`), so a single deployment serves every tenant.
