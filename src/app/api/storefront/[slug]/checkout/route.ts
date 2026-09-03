@@ -40,7 +40,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       source: "storefront",
     });
     const full = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, include: { customer: true, payments: true } });
-    const payUrl = (await startPayment(business, full)) ?? `/s/${slug}/orders/${order.id}`;
+    const start = await startPayment(business, full);
+    const payUrl =
+      start.kind === "redirect" ? start.url : `/s/${slug}/orders/${order.id}${start.kind === "unavailable" ? "?unavailable=1" : ""}`;
     return NextResponse.json({ orderId: order.id, payUrl });
   } catch (error) {
     if (error instanceof AvailabilityError) {

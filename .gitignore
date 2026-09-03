@@ -9,3 +9,8 @@ tsconfig.tsbuildinfo
 next-env.d.ts
 .vercel
 .env*
+
+# local agent tooling (Stripe/Neon skills)
+.agents/
+.claude/
+skills-lock.json

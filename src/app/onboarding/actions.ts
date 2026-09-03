@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { slugify } from "@/lib/format";
+import { TRIAL_DAYS } from "@/lib/stripe";
 
 export type OnboardingState = { error?: string };
 
@@ -38,6 +39,7 @@ export async function createBusiness(_prev: OnboardingState, formData: FormData)
       phone,
       currency,
       policies: DEFAULT_POLICIES,
+      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
       categories: { create: [{ name: "General" }] },
     },
   });

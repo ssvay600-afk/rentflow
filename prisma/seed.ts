@@ -44,6 +44,7 @@ Cancellations: Free cancellation up to 48 hours before pickup; 50% fee inside 48
 Delivery: Free pickup in store. Delivery within Boulder for $25 on orders over $150.
 Damage: Normal wear is fine. Tears, broken poles or lost parts are charged at repair cost, capped at the deposit.`,
       remindBeforeDays: 1,
+      trialEndsAt: new Date(Date.now() + 365 * 86_400_000), // demo business never locks
       categories: {
         create: [{ name: "Tents & Shelter" }, { name: "Backpacks" }, { name: "Cooking" }, { name: "Water" }],
       },

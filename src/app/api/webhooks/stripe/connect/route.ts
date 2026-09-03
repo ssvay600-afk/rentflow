@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
-import { handlePlatformEvent } from "@/lib/stripe-webhooks";
+import { handleConnectEvent } from "@/lib/stripe-webhooks";
 
-/** Platform webhook: subscription lifecycle for the businesses' RentFlow plans. */
+/** Connect webhook: events from the businesses' connected accounts (rental payments, account status). */
 export async function POST(req: Request) {
   const stripe = getStripe();
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET ?? process.env.STRIPE_WEBHOOK_SECRET;
   if (!stripe || !secret) return NextResponse.json({ error: "Stripe not configured" }, { status: 501 });
 
   const signature = req.headers.get("stripe-signature");
@@ -20,9 +20,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    await handlePlatformEvent(event);
+    await handleConnectEvent(event);
   } catch (err) {
-    console.error("stripe platform webhook failed", event.type, err);
+    console.error("stripe connect webhook failed", event.type, err);
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
   return NextResponse.json({ received: true });

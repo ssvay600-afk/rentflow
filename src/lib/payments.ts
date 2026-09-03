@@ -1,24 +1,36 @@
 import type { Business, Order, Customer } from "@prisma/client";
 import { prisma } from "./db";
 import { paidAmount } from "./orders";
-import { createStripeCheckout, getStripe } from "./stripe";
+import { createRentalCheckout, getStripe } from "./stripe";
+
+export type PaymentStart =
+  | { kind: "redirect"; url: string }
+  | { kind: "unavailable"; reason: string }
+  | { kind: "nothing_due" };
 
 /**
  * Starts an online payment for an order's outstanding balance.
- * Returns the URL the customer should be sent to (Stripe Checkout or the
- * built-in simulated payment page) or null if nothing is owed.
+ *  - Stripe configured + business onboarded → Checkout Session on the business's
+ *    connected account (direct charge with a platform fee).
+ *  - Stripe configured but business not onboarded → unavailable (pay at pickup).
+ *  - No Stripe key (demo) → built-in simulated payment page.
  */
-export async function startPayment(business: Business, order: Order & { customer: Customer; payments: { status: string; amount: number }[] }) {
+export async function startPayment(
+  business: Business,
+  order: Order & { customer: Customer; payments: { status: string; amount: number }[] },
+): Promise<PaymentStart> {
   const balance = order.total - paidAmount(order.payments);
-  if (balance <= 0 || order.status === "CANCELLED") return null;
+  if (balance <= 0 || order.status === "CANCELLED") return { kind: "nothing_due" };
 
-  // Reuse an open pending payment for this order if one exists.
+  const stripe = getStripe();
+  if (stripe && !(business.stripeAccountId && business.stripeChargesEnabled)) {
+    return { kind: "unavailable", reason: `${business.name} hasn't enabled online payments yet. Please pay at pickup.` };
+  }
+
   const existing = await prisma.payment.findFirst({
     where: { orderId: order.id, status: "pending", amount: balance },
     orderBy: { createdAt: "desc" },
   });
-
-  const stripe = getStripe();
   const payment =
     existing ??
     (await prisma.payment.create({
@@ -29,29 +41,30 @@ export async function startPayment(business: Business, order: Order & { customer
         currency: business.currency,
         method: stripe ? "stripe" : "simulated",
         status: "pending",
+        stripeAccountId: stripe ? business.stripeAccountId : null,
       },
     }));
 
   if (stripe) {
-    const session = await createStripeCheckout({
+    const { session, fee } = await createRentalCheckout({
+      business,
       paymentId: payment.id,
-      businessSlug: business.slug,
-      businessName: business.name,
       orderId: order.id,
       orderNumber: order.orderNumber,
       amount: balance,
-      currency: business.currency,
       customerEmail: order.customer.email,
     });
-    if (session?.url) {
-      await prisma.payment.update({ where: { id: payment.id }, data: { stripeSessionId: session.id } });
-      return session.url;
-    }
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { stripeSessionId: session.id, applicationFee: fee, stripeAccountId: business.stripeAccountId },
+    });
+    if (!session.url) return { kind: "unavailable", reason: "Stripe did not return a checkout URL." };
+    return { kind: "redirect", url: session.url };
   }
-  return `/s/${business.slug}/pay/${payment.id}`;
+  return { kind: "redirect", url: `/s/${business.slug}/pay/${payment.id}` };
 }
 
-/** Marks a payment as paid and confirms the order if it was pending. */
+/** Marks a payment as paid and confirms the order if it was pending. Idempotent. */
 export async function markPaymentPaid(paymentId: string, extra: { stripePaymentIntentId?: string; note?: string } = {}) {
   const payment = await prisma.payment.findUnique({ where: { id: paymentId }, include: { order: true } });
   if (!payment) return null;
@@ -64,4 +77,8 @@ export async function markPaymentPaid(paymentId: string, extra: { stripePaymentI
     await prisma.order.update({ where: { id: payment.orderId }, data: { status: "CONFIRMED" } });
   }
   return updated;
+}
+
+export async function markPaymentFailed(paymentId: string, note: string) {
+  await prisma.payment.updateMany({ where: { id: paymentId, status: "pending" }, data: { status: "failed", note } });
 }

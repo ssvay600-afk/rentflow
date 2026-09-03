@@ -7,6 +7,7 @@ import { requireBusiness } from "@/lib/auth";
 import { ORDER_STATUSES, nextStatuses, parseDateInput, slugify } from "@/lib/format";
 import { AvailabilityError, createOrder } from "@/lib/orders";
 import { runReminderAgent, sendReminder as deliverReminder } from "@/lib/reminders";
+import { createOnboardingLink, ensureConnectedAccount, refundStripePayment, syncAccountStatus } from "@/lib/stripe";
 
 export type ActionState = { error?: string; success?: string };
 
@@ -114,10 +115,32 @@ export async function recordPayment(orderId: string, formData: FormData) {
 
 export async function refundPayment(paymentId: string) {
   const { business } = await requireBusiness();
-  await prisma.payment.updateMany({
-    where: { id: paymentId, businessId: business.id, status: "paid" },
-    data: { status: "refunded" },
-  });
+  const payment = await prisma.payment.findFirst({ where: { id: paymentId, businessId: business.id, status: "paid" } });
+  if (!payment) return;
+  let note = payment.note;
+  if (payment.method === "stripe") {
+    const refund = await refundStripePayment(payment);
+    if (!refund) throw new Error("Could not refund this payment through Stripe");
+    note = `Refunded via Stripe (${refund.id})`;
+  }
+  await prisma.payment.update({ where: { id: paymentId }, data: { status: "refunded", note } });
+  refresh();
+}
+
+// ---------------------------------------------------------------------------
+// Stripe Connect (get paid online)
+// ---------------------------------------------------------------------------
+
+export async function connectStripe() {
+  const { business } = await requireBusiness();
+  const accountId = await ensureConnectedAccount(business);
+  const url = await createOnboardingLink(accountId);
+  redirect(url);
+}
+
+export async function refreshStripeStatus() {
+  const { business } = await requireBusiness();
+  await syncAccountStatus(business);
   refresh();
 }
 
@@ -309,6 +332,7 @@ export async function saveBusinessSettings(_prev: ActionState, formData: FormDat
       email: String(formData.get("email") ?? "").trim(),
       phone: String(formData.get("phone") ?? "").trim(),
       address: String(formData.get("address") ?? "").trim(),
+      country: String(formData.get("country") ?? "US").toUpperCase().slice(0, 2) || "US",
       taxRate: Math.max(0, Number(formData.get("taxRate") ?? 0) || 0),
       lowStockThreshold: Math.max(0, Number(formData.get("lowStockThreshold") ?? 2) || 0),
     },

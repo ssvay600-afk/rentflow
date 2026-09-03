@@ -2,8 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { markPaymentPaid } from "@/lib/payments";
-import { startPayment } from "@/lib/payments";
+import { markPaymentPaid, startPayment } from "@/lib/payments";
 
 /** Simulated checkout used when Stripe is not configured. */
 export async function completeSimulatedPayment(slug: string, paymentId: string) {
@@ -23,6 +22,7 @@ export async function payOrder(slug: string, orderId: string) {
     include: { customer: true, payments: true },
   });
   if (!order) throw new Error("Order not found");
-  const url = await startPayment(business, order);
-  redirect(url ?? `/s/${slug}/orders/${orderId}`);
+  const start = await startPayment(business, order);
+  if (start.kind === "redirect") redirect(start.url);
+  redirect(`/s/${slug}/orders/${orderId}${start.kind === "unavailable" ? "?unavailable=1" : ""}`);
 }

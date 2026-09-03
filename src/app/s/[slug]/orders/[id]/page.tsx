@@ -10,10 +10,10 @@ export default async function CustomerOrderPage({
   searchParams,
 }: {
   params: Promise<{ slug: string; id: string }>;
-  searchParams: Promise<{ paid?: string; cancelled?: string }>;
+  searchParams: Promise<{ paid?: string; cancelled?: string; unavailable?: string }>;
 }) {
   const { slug, id } = await params;
-  const { paid, cancelled } = await searchParams;
+  const { paid, cancelled, unavailable } = await searchParams;
   const business = await prisma.business.findUnique({ where: { slug } });
   if (!business) notFound();
   const order = await prisma.order.findFirst({
@@ -22,14 +22,15 @@ export default async function CustomerOrderPage({
   });
   if (!order) notFound();
 
-  // When Stripe redirects back before the webhook lands, reconcile the session directly.
+  // The webhook is the source of truth; this only shortens the wait when the
+  // customer lands here before Stripe's event has been delivered.
   if (paid && process.env.STRIPE_SECRET_KEY) {
     const { getStripe } = await import("@/lib/stripe");
     const { markPaymentPaid } = await import("@/lib/payments");
     const pending = order.payments.filter((p) => p.status === "pending" && p.stripeSessionId);
     const stripe = getStripe();
     for (const p of pending) {
-      const session = await stripe!.checkout.sessions.retrieve(p.stripeSessionId!);
+      const session = await stripe!.checkout.sessions.retrieve(p.stripeSessionId!, undefined, p.stripeAccountId ? { stripeAccount: p.stripeAccountId } : undefined);
       if (session.payment_status === "paid") {
         await markPaymentPaid(p.id, { stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined });
         p.status = "paid";
@@ -51,6 +52,11 @@ export default async function CustomerOrderPage({
       {cancelled && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Payment was cancelled. Your reservation is held as pending; you can pay below.
+        </div>
+      )}
+      {unavailable && (
+        <div className="mb-6 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          Your reservation request is in. {business.name} hasn&apos;t enabled online payments yet, so please pay at pickup. They&apos;ll confirm your booking shortly.
         </div>
       )}
       <p className="text-sm text-slate-500">Order #{order.orderNumber}</p>

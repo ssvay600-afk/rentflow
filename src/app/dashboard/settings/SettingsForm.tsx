@@ -27,7 +27,10 @@ export function SettingsForm({ business }: { business: Business }) {
           <label className="block"><span className="label">Phone</span><input name="phone" defaultValue={business.phone} className="input" /></label>
           <label className="block"><span className="label">Currency</span><input name="currency" defaultValue={business.currency} maxLength={3} className="input uppercase" /></label>
         </div>
-        <label className="block"><span className="label">Address</span><input name="address" defaultValue={business.address} className="input" /></label>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <label className="block sm:col-span-2"><span className="label">Address</span><input name="address" defaultValue={business.address} className="input" /></label>
+          <label className="block"><span className="label">Country (ISO code)</span><input name="country" defaultValue={business.country} maxLength={2} className="input uppercase" disabled={Boolean(business.stripeAccountId)} /></label>
+        </div>
       </section>
 
       <section className="card space-y-4 p-6">

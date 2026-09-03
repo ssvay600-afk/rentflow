@@ -13,7 +13,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "setup": "npm run db:push && npm run db:seed",
-    "agent:run": "tsx scripts/run-agent.ts"
+    "agent:run": "tsx scripts/run-agent.ts",
+    "stripe:setup": "tsx scripts/stripe-setup.ts",
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe --forward-connect-to localhost:3000/api/webhooks/stripe/connect"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
