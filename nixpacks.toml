@@ -1,0 +1,13 @@
+# Railway / Nixpacks build settings.
+# openssl is required by Prisma's query engine at runtime.
+[phases.setup]
+nixPkgs = ["nodejs_22", "openssl"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start:prod"

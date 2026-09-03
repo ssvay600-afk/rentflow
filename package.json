@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "start:prod": "prisma db push --skip-generate --accept-data-loss && tsx prisma/seed.ts && next start -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
@@ -23,9 +24,11 @@
     "bcryptjs": "^3.0.3",
     "next": "^15.5.0",
     "nodemailer": "^9.1.1",
+    "prisma": "^6.19.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "stripe": "^22.6.1",
+    "tsx": "^4.23.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
@@ -34,9 +37,10 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "prisma": "^6.19.3",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.0",
     "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
