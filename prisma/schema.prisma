@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Platform accounts
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  business     Business?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Tenant: one rental business = one storefront
+// ---------------------------------------------------------------------------
+
+model Business {
+  id           String  @id @default(cuid())
+  slug         String  @unique
+  name         String
+  tagline      String  @default("")
+  description  String  @default("")
+  logoUrl      String  @default("")
+  heroImageUrl String  @default("")
+  primaryColor String  @default("#0f766e")
+  currency     String  @default("USD")
+  email        String  @default("")
+  phone        String  @default("")
+  address      String  @default("")
+  taxRate      Float   @default(0) // percent, e.g. 8.25
+
+  // Knowledge base the support bot uses (policies, FAQ, hours...)
+  policies    String  @default("")
+  botEnabled  Boolean @default(true)
+  botName     String  @default("Rental Assistant")
+  botGreeting String  @default("Hi! I can check availability, explain our policies, or look up an order. How can I help?")
+
+  // Reminder agent settings
+  remindBeforeDays  Int     @default(1)
+  remindOverdue     Boolean @default(true)
+  remindPaymentDue  Boolean @default(true)
+  autoSendReminders Boolean @default(false)
+  lowStockThreshold Int     @default(2)
+
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories    Category[]
+  items         Item[]
+  customers     Customer[]
+  orders        Order[]
+  payments      Payment[]
+  reminders     Reminder[]
+  conversations Conversation[]
+  agentRuns     AgentRun[]
+}
+
+model Category {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  items      Item[]
+
+  @@unique([businessId, name])
+}
+
+// ---------------------------------------------------------------------------
+// Inventory
+// ---------------------------------------------------------------------------
+
+model Item {
+  id          String    @id @default(cuid())
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name        String
+  slug        String
+  sku         String    @default("")
+  description String    @default("")
+  imageUrl    String    @default("")
+  pricePerDay Int // cents
+  deposit     Int       @default(0) // cents
+  quantity    Int       @default(1)
+  minDays     Int       @default(1)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  orderItems  OrderItem[]
+
+  @@unique([businessId, slug])
+  @@index([businessId, active])
+}
+
+// ---------------------------------------------------------------------------
+// Customers & orders
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id            String         @id @default(cuid())
+  businessId    String
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name          String
+  email         String
+  phone         String         @default("")
+  notes         String         @default("")
+  createdAt     DateTime       @default(now())
+  orders        Order[]
+  reminders     Reminder[]
+  conversations Conversation[]
+
+  @@unique([businessId, email])
+}
+
+/// status: PENDING | CONFIRMED | ACTIVE | RETURNED | CANCELLED
+model Order {
+  id          String      @id @default(cuid())
+  businessId  String
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  orderNumber Int
+  status      String      @default("PENDING")
+  startDate   DateTime
+  endDate     DateTime
+  subtotal    Int // cents
+  deposit     Int         @default(0)
+  tax         Int         @default(0)
+  total       Int
+  notes       String      @default("")
+  source      String      @default("storefront") // storefront | manual | bot
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  items       OrderItem[]
+  payments    Payment[]
+  reminders   Reminder[]
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId, status])
+  @@index([businessId, startDate])
+  @@index([businessId, endDate])
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item   @relation(fields: [itemId], references: [id])
+  quantity  Int
+  unitPrice Int // cents per day at time of order
+  days      Int
+  lineTotal Int
+}
+
+/// method: stripe | simulated | cash | card | bank | other
+/// status: pending | paid | refunded | failed
+model Payment {
+  id                    String    @id @default(cuid())
+  businessId            String
+  business              Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId               String
+  order                 Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount                Int // cents
+  currency              String
+  method                String
+  status                String    @default("pending")
+  stripeSessionId       String?   @unique
+  stripePaymentIntentId String?
+  note                  String    @default("")
+  paidAt                DateTime?
+  createdAt             DateTime  @default(now())
+
+  @@index([businessId, status])
+}
+
+// ---------------------------------------------------------------------------
+// AI reminder agent
+// ---------------------------------------------------------------------------
+
+/// type: pickup | return | overdue | payment_due | custom
+/// status: draft | approved | sent | failed | skipped
+model Reminder {
+  id           String    @id @default(cuid())
+  businessId   String
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId      String?
+  order        Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerId   String
+  customer     Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type         String
+  channel      String    @default("email")
+  scheduledFor DateTime
+  subject      String
+  body         String
+  status       String    @default("draft")
+  aiGenerated  Boolean   @default(false)
+  deliveryNote String    @default("")
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([orderId, type])
+  @@index([businessId, status])
+}
+
+model AgentRun {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  trigger    String // manual | cron | schedule
+  summary    String
+  created    Int      @default(0)
+  sent       Int      @default(0)
+  usedAi     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Customer-service bot
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  visitorId  String
+  escalated  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  messages   Message[]
+
+  @@index([businessId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // user | assistant
+  content        String
+  createdAt      DateTime     @default(now())
+}
