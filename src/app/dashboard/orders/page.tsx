@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { ORDER_STATUSES, STATUS_LABEL, formatDateRange, formatMoney } from "@/lib/format";
 import { paidAmount } from "@/lib/orders";
 import { Badge, EmptyState, PageHeader } from "@/components/ui";
+import { LinkRow } from "@/components/LinkRow";
 
 export const metadata = { title: "Orders" };
 
@@ -60,15 +61,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               {orders.map((o) => {
                 const paid = paidAmount(o.payments);
                 return (
-                  <tr key={o.id}>
+                  <LinkRow key={o.id} href={`/dashboard/orders/${o.id}`}>
                     <td><Link href={`/dashboard/orders/${o.id}`} className="font-medium text-teal-700 hover:underline">#{o.orderNumber}</Link><div className="text-xs text-slate-400">{o.source}</div></td>
                     <td>{o.customer.name}<div className="text-xs text-slate-500">{o.customer.email}</div></td>
                     <td className="max-w-xs truncate text-slate-600">{o.items.map((l) => `${l.quantity}× ${l.item.name}`).join(", ")}</td>
                     <td className="whitespace-nowrap text-slate-600">{formatDateRange(o.startDate, o.endDate)}</td>
                     <td>{formatMoney(o.total, business.currency)}</td>
                     <td className={paid >= o.total ? "text-emerald-700" : "text-amber-700"}>{formatMoney(paid, business.currency)}</td>
-                    <td><Badge status={o.status} /></td>
-                  </tr>
+                    <td className="whitespace-nowrap"><Badge status={o.status} /> <span className="ml-1 text-slate-300">›</span></td>
+                  </LinkRow>
                 );
               })}
             </tbody>

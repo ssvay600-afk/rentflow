@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatDate, formatMoney } from "@/lib/format";
 import { listBusinesses, subscriptionLabel, subscriptionTone } from "@/lib/admin-stats";
 import { Badge, EmptyState, PageHeader } from "@/components/ui";
+import { LinkRow } from "@/components/LinkRow";
 import { toggleSuspended } from "../actions";
 
 export const metadata = { title: "Businesses" };
@@ -24,7 +25,7 @@ export default async function AdminBusinesses({ searchParams }: { searchParams: 
             <thead><tr><th>Business</th><th>Owner</th><th>Plan</th><th>Stripe</th><th>Orders</th><th>Rental volume</th><th>Fees earned</th><th>Joined</th><th></th></tr></thead>
             <tbody>
               {businesses.map((b) => (
-                <tr key={b.id} className={b.suspended ? "bg-rose-50/50" : ""}>
+                <LinkRow key={b.id} href={`/admin/businesses/${b.id}`} className={b.suspended ? "bg-rose-50/50" : ""}>
                   <td>
                     <Link href={`/admin/businesses/${b.id}`} className="font-medium text-teal-700 hover:underline">{b.name}</Link>
                     <div className="text-xs text-slate-400">/s/{b.slug}{b.suspended && <span className="ml-2 rounded bg-rose-100 px-1.5 text-rose-700">suspended</span>}</div>
@@ -42,7 +43,7 @@ export default async function AdminBusinesses({ searchParams }: { searchParams: 
                       <button className={`text-xs hover:underline ${b.suspended ? "text-emerald-700" : "text-rose-700"}`}>{b.suspended ? "Unsuspend" : "Suspend"}</button>
                     </form>
                   </td>
-                </tr>
+                </LinkRow>
               ))}
             </tbody>
           </table>

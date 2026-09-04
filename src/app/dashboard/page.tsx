@@ -5,6 +5,7 @@ import { formatDate, formatDateRange, formatMoney } from "@/lib/format";
 import { getAvailability } from "@/lib/orders";
 import { aiEnabled } from "@/lib/ai";
 import { Alert, Badge, Card, EmptyState, Stat } from "@/components/ui";
+import { LinkRow } from "@/components/LinkRow";
 
 export const metadata = { title: "Overview" };
 
@@ -140,13 +141,13 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
               </thead>
               <tbody>
                 {recentOrders.map((o) => (
-                  <tr key={o.id}>
+                  <LinkRow key={o.id} href={`/dashboard/orders/${o.id}`}>
                     <td><Link href={`/dashboard/orders/${o.id}`} className="font-medium hover:underline">#{o.orderNumber}</Link></td>
                     <td>{o.customer.name}</td>
                     <td className="text-slate-600">{formatDateRange(o.startDate, o.endDate)}</td>
                     <td>{formatMoney(o.total, business.currency)}</td>
                     <td><Badge status={o.status} /></td>
-                  </tr>
+                  </LinkRow>
                 ))}
               </tbody>
             </table>
