@@ -162,6 +162,13 @@ export async function createRentalCheckout(params: {
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
+      ui_mode: "hosted_page",
+      billing_address_collection: "auto",
+      phone_number_collection: { enabled: false },
+      automatic_tax: { enabled: false },
+      allow_promotion_codes: false,
+      submit_type: "auto",
+      origin_context: "web",
       customer_email: params.customerEmail,
       line_items: [
         {
@@ -178,7 +185,7 @@ export async function createRentalCheckout(params: {
         metadata: { paymentId: params.paymentId, orderId: params.orderId, businessId: business.id },
       },
       metadata: { paymentId: params.paymentId, orderId: params.orderId, businessId: business.id },
-      integration_identifier: integrationIdentifier("rental"),
+      integration_identifier: "hosted_web_0001",
       success_url: `${base}/s/${business.slug}/orders/${params.orderId}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/s/${business.slug}/orders/${params.orderId}?cancelled=1`,
     },
@@ -213,6 +220,14 @@ export async function createSubscriptionCheckout(business: Business, planKey: Pl
   const trialLeft = business.trialEndsAt ? Math.ceil((business.trialEndsAt.getTime() - Date.now()) / 86_400_000) : 0;
   return stripe.checkout.sessions.create({
     mode: "subscription",
+    ui_mode: "hosted_page",
+    billing_address_collection: "auto",
+    phone_number_collection: { enabled: false },
+    automatic_tax: { enabled: false },
+    allow_promotion_codes: false,
+    payment_method_collection: "always",
+    submit_type: "auto",
+    origin_context: "web",
     customer_account: accountId,
     line_items: [{ price: plan.priceId, quantity: 1 }],
     subscription_data: {
@@ -220,8 +235,7 @@ export async function createSubscriptionCheckout(business: Business, planKey: Pl
       metadata: { businessId: business.id, planKey },
     },
     metadata: { businessId: business.id, planKey },
-    integration_identifier: integrationIdentifier("subscription"),
-    allow_promotion_codes: true,
+    integration_identifier: "hosted_web_0001",
     success_url: `${base}/billing?success=1`,
     cancel_url: `${base}/billing`,
   });
