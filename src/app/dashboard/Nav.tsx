@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/dashboard/payouts", label: "Get paid" },
   { href: "/dashboard/reminders", label: "AI Reminders" },
   { href: "/dashboard/bot", label: "Support Bot" },
+  { href: "/dashboard/emails", label: "Emails" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 

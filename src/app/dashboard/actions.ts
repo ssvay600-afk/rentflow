@@ -22,6 +22,8 @@ import {
 } from "@/lib/domains";
 import { settleDomainPurchase } from "@/lib/domain-purchases";
 import { normalizeSocial } from "@/lib/social";
+import { sendOrderConfirmation, sendOrderStatusEmail, sendPaymentReceipt, sendRefundNotice, sendTestEmail } from "@/lib/notifications";
+import { appUrl } from "@/lib/stripe";
 import { createDomainCheckout } from "@/lib/stripe";
 
 export type ActionState = { error?: string; success?: string };
@@ -47,6 +49,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
     throw new Error(`Cannot move order from ${order.status} to ${status}`);
   }
   await prisma.order.update({ where: { id: orderId }, data: { status } });
+  await sendOrderStatusEmail(orderId);
   refresh();
 }
 
@@ -94,6 +97,7 @@ export async function createManualOrder(_prev: ActionState, formData: FormData):
       postalCode: String(formData.get("postalCode") ?? ""),
     });
     orderId = order.id;
+    await sendOrderConfirmation(order.id, { payUrl: `${appUrl()}/s/${business.slug}/orders/${order.id}` });
   } catch (error) {
     if (error instanceof AvailabilityError) {
       return {
@@ -116,7 +120,7 @@ export async function recordPayment(orderId: string, formData: FormData) {
   if (!order) throw new Error("Order not found");
   const amount = dollarsToCents(formData.get("amount"));
   if (amount <= 0) throw new Error("Amount must be positive");
-  await prisma.payment.create({
+  const payment = await prisma.payment.create({
     data: {
       businessId: business.id,
       orderId,
@@ -131,6 +135,7 @@ export async function recordPayment(orderId: string, formData: FormData) {
   if (order.status === "PENDING") {
     await prisma.order.update({ where: { id: orderId }, data: { status: "CONFIRMED" } });
   }
+  await sendPaymentReceipt(payment.id);
   refresh();
 }
 
@@ -145,7 +150,21 @@ export async function refundPayment(paymentId: string) {
     note = `Refunded via Stripe (${refund.id})`;
   }
   await prisma.payment.update({ where: { id: paymentId }, data: { status: "refunded", note } });
+  await sendRefundNotice(paymentId);
   refresh();
+}
+
+// ---------------------------------------------------------------------------
+// Email
+// ---------------------------------------------------------------------------
+
+export async function sendTestEmailAction(): Promise<ActionState> {
+  const { user, business } = await requireBusiness();
+  const r = await sendTestEmail(business, business.email || user.email);
+  refresh();
+  if (r.status === "sent") return { success: `Test email sent to ${business.email || user.email}.` };
+  if (r.status === "logged") return { error: "No email provider is configured, so the message was only stored in the outbox." };
+  return { error: `Send failed: ${r.error}` };
 }
 
 // ---------------------------------------------------------------------------

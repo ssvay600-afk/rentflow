@@ -1,28 +1,22 @@
-import nodemailer from "nodemailer";
+import { sendEmail } from "./email";
 
 export type SendResult = { delivered: boolean; note: string };
 
-/**
- * Sends an email through SMTP when configured. Otherwise the message is kept
- * in the outbox (the Reminder row) and marked as logged so the workflow still
- * completes in demo mode.
- */
-export async function sendEmail(params: { to: string; subject: string; text: string }): Promise<SendResult> {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
-  if (!SMTP_HOST) {
-    return { delivered: false, note: "SMTP not configured – message stored in outbox only" };
-  }
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT ?? 587),
-    secure: Number(SMTP_PORT ?? 587) === 465,
-    auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
-  });
-  const info = await transporter.sendMail({
-    from: SMTP_FROM ?? SMTP_USER,
+/** Backwards-compatible wrapper used by the reminder agent. */
+export async function sendReminderEmail(params: { businessId: string; businessName: string; replyTo?: string; to: string; subject: string; text: string }): Promise<SendResult> {
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#0f172a;white-space:pre-wrap">${params.text
+    .replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c] ?? c)}</div>`;
+  const r = await sendEmail({
+    businessId: params.businessId,
+    kind: "reminder",
     to: params.to,
     subject: params.subject,
     text: params.text,
+    html,
+    replyTo: params.replyTo,
+    fromName: params.businessName,
   });
-  return { delivered: true, note: `Delivered via SMTP (${info.messageId})` };
+  if (r.status === "sent") return { delivered: true, note: `Delivered (${r.providerId})` };
+  if (r.status === "logged") return { delivered: false, note: "No email provider configured – stored in outbox only" };
+  throw new Error(r.error ?? "Send failed");
 }

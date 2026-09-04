@@ -2,6 +2,7 @@ import type { Business, Order, Customer } from "@prisma/client";
 import { prisma } from "./db";
 import { paidAmount } from "./orders";
 import { createRentalCheckout, getStripe } from "./stripe";
+import { sendPaymentReceipt } from "./notifications";
 
 export type PaymentStart =
   | { kind: "redirect"; url: string }
@@ -76,6 +77,7 @@ export async function markPaymentPaid(paymentId: string, extra: { stripePaymentI
   if (payment.order.status === "PENDING") {
     await prisma.order.update({ where: { id: payment.orderId }, data: { status: "CONFIRMED" } });
   }
+  await sendPaymentReceipt(paymentId);
   return updated;
 }
 

@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { parseDateInput } from "@/lib/format";
 import { AvailabilityError, createOrder } from "@/lib/orders";
 import { startPayment } from "@/lib/payments";
+import { notifyOwnerNewOrder, sendOrderConfirmation } from "@/lib/notifications";
+import { appUrl } from "@/lib/stripe";
 
 const Body = z.object({
   start: z.string(),
@@ -66,6 +68,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const start = await startPayment(business, full);
     const payUrl =
       start.kind === "redirect" ? start.url : `/s/${slug}/orders/${order.id}${start.kind === "unavailable" ? "?unavailable=1" : ""}`;
+    const absolutePay = start.kind === "redirect" ? (start.url.startsWith("http") ? start.url : `${appUrl()}${start.url}`) : null;
+    await Promise.all([sendOrderConfirmation(order.id, { payUrl: absolutePay }), notifyOwnerNewOrder(order.id)]);
     return NextResponse.json({ orderId: order.id, payUrl });
   } catch (error) {
     if (error instanceof AvailabilityError) {

@@ -8,6 +8,8 @@ import { formatDate, formatMoney, parseDateInput, rentalDays } from "./format";
 import { AvailabilityError, buildQuote, createOrder, getAvailability, paidAmount } from "./orders";
 import { STATUS_LABEL } from "./format";
 import { socialLinks } from "./social";
+import { notifyOwnerNewOrder, sendOrderConfirmation } from "./notifications";
+import { appUrl } from "./stripe";
 
 const HISTORY_LIMIT = 20;
 
@@ -163,6 +165,10 @@ export async function answerCustomer(business: Business, conversationId: string,
           where: { id: conversationId },
           data: { customerId: order.customerId },
         });
+        await Promise.all([
+          sendOrderConfirmation(order.id, { payUrl: `${appUrl()}/s/${business.slug}/orders/${order.id}` }),
+          notifyOwnerNewOrder(order.id),
+        ]);
         return JSON.stringify({
           ok: true,
           order_number: order.orderNumber,

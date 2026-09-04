@@ -2,7 +2,7 @@ import type { Business, Customer, Order, OrderItem, Item } from "@prisma/client"
 import { prisma } from "./db";
 import { CLAUDE_MODEL, describeAiError, getClaude } from "./ai";
 import { formatAddress, formatDate, formatMoney } from "./format";
-import { sendEmail } from "./mailer";
+import { sendReminderEmail } from "./mailer";
 import { paidAmount } from "./orders";
 
 export type ReminderType = "pickup" | "return" | "overdue" | "payment_due";
@@ -159,10 +159,13 @@ async function composeMessage(business: Business, order: OrderWithDetails, type:
 export async function sendReminder(reminderId: string) {
   const reminder = await prisma.reminder.findUniqueOrThrow({
     where: { id: reminderId },
-    include: { customer: true },
+    include: { customer: true, business: true },
   });
   try {
-    const result = await sendEmail({
+    const result = await sendReminderEmail({
+      businessId: reminder.businessId,
+      businessName: reminder.business.name,
+      replyTo: reminder.business.email || undefined,
       to: reminder.customer.email,
       subject: reminder.subject,
       text: reminder.body,
