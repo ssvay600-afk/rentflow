@@ -9,9 +9,9 @@ import { openBillingPortal, startSubscription } from "./actions";
 
 export const metadata = { title: "Billing" };
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ success?: string; changed?: string }> }) {
   const { business } = await requireBusiness();
-  const { success } = await searchParams;
+  const { success, changed } = await searchParams;
   const state = billingState(business);
   const subscribed = state.kind === "active" || state.kind === "past_due";
 
@@ -24,6 +24,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       {success && (
         <div className="mt-6">
           <Alert tone="success">Thanks! Your subscription is being activated. This page updates as soon as Stripe confirms it.</Alert>
+        </div>
+      )}
+      {changed && (
+        <div className="mt-6">
+          <Alert tone="success">Your plan has been changed. Any price difference is prorated on your next invoice.</Alert>
         </div>
       )}
       {!billingEnforced() && (

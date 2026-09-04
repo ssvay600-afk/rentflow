@@ -241,6 +241,29 @@ export async function createSubscriptionCheckout(business: Business, planKey: Pl
   });
 }
 
+/**
+ * Changes the plan on an existing active/trialing subscription in place
+ * (prorated), instead of starting a second subscription through Checkout.
+ */
+export async function changeSubscriptionPlan(business: Business, planKey: PlanKey) {
+  const stripe = getStripe();
+  if (!stripe || !business.subscriptionId) throw new Error("No subscription to change");
+  const plan = PLANS[planKey];
+  if (!plan.priceId) throw new Error(`Price for plan "${planKey}" is not configured`);
+  const current = await stripe.subscriptions.retrieve(business.subscriptionId);
+  const item = current.items.data[0];
+  const updated = await stripe.subscriptions.update(business.subscriptionId, {
+    items: [{ id: item.id, price: plan.priceId }],
+    proration_behavior: "create_prorations",
+    metadata: { ...current.metadata, businessId: business.id, planKey },
+  });
+  return applySubscription(updated);
+}
+
+export function hasLiveSubscription(business: Business) {
+  return Boolean(business.subscriptionId) && ["active", "trialing", "past_due"].includes(business.subscriptionStatus ?? "");
+}
+
 export async function createPortalSession(business: Business) {
   const stripe = getStripe();
   if (!stripe || !business.stripeAccountId) throw new Error("No billing account yet");
@@ -261,6 +284,9 @@ export async function applySubscription(sub: Stripe.Subscription) {
   const business = await prisma.business.findFirst({ where });
   if (!business) return null;
   const active = ["active", "trialing", "past_due"].includes(sub.status);
+  // Ignore terminal events for a subscription that isn't the one we track
+  // (e.g. a cancelled duplicate) so they can't overwrite a live subscription.
+  if (!active && business.subscriptionId && business.subscriptionId !== sub.id) return business;
   return prisma.business.update({
     where: { id: business.id },
     data: {
