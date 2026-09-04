@@ -8,6 +8,7 @@ import { ORDER_STATUSES, nextStatuses, parseDateInput, slugify } from "@/lib/for
 import { AvailabilityError, createOrder } from "@/lib/orders";
 import { runReminderAgent, sendReminder as deliverReminder } from "@/lib/reminders";
 import { createOnboardingLink, ensureConnectedAccount, refundStripePayment, syncAccountStatus } from "@/lib/stripe";
+import { addDomainToVercel, getDomainStatus, normalizeDomain, removeDomainFromVercel } from "@/lib/domains";
 
 export type ActionState = { error?: string; success?: string };
 
@@ -307,6 +308,50 @@ export async function resolveConversation(conversationId: string) {
   await prisma.conversation.updateMany({
     where: { id: conversationId, businessId: business.id },
     data: { escalated: false },
+  });
+  refresh();
+}
+
+// ---------------------------------------------------------------------------
+// Custom domain
+// ---------------------------------------------------------------------------
+
+export async function setCustomDomain(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { business } = await requireBusiness();
+  const domain = normalizeDomain(String(formData.get("domain") ?? ""));
+  if (!domain) return { error: "Enter a valid domain such as www.yourbusiness.com" };
+  if (domain.endsWith(".vercel.app")) return { error: "Please use a domain you own." };
+  const clash = await prisma.business.findFirst({ where: { customDomain: domain, id: { not: business.id } } });
+  if (clash) return { error: "That domain is already connected to another storefront." };
+  if (business.customDomain && business.customDomain !== domain) await removeDomainFromVercel(business.customDomain);
+  const added = await addDomainToVercel(domain);
+  if (!added.ok) return { error: `Could not register the domain: ${added.error}` };
+  await prisma.business.update({
+    where: { id: business.id },
+    data: { customDomain: domain, customDomainVerified: false, customDomainAddedAt: new Date() },
+  });
+  refresh();
+  return { success: "Domain saved. Add the DNS records below, then click “Check status”." };
+}
+
+export async function checkCustomDomain() {
+  const { business } = await requireBusiness();
+  if (!business.customDomain) return;
+  const status = await getDomainStatus(business.customDomain);
+  await prisma.business.update({
+    where: { id: business.id },
+    data: { customDomainVerified: status.verified && status.configured },
+  });
+  refresh();
+}
+
+export async function removeCustomDomain() {
+  const { business } = await requireBusiness();
+  if (!business.customDomain) return;
+  await removeDomainFromVercel(business.customDomain);
+  await prisma.business.update({
+    where: { id: business.id },
+    data: { customDomain: null, customDomainVerified: false, customDomainAddedAt: null },
   });
   refresh();
 }

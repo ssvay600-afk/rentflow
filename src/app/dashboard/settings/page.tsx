@@ -2,6 +2,7 @@ import { requireBusiness } from "@/lib/auth";
 import { appUrl } from "@/lib/stripe";
 import { Card, PageHeader } from "@/components/ui";
 import { SettingsForm } from "./SettingsForm";
+import { DomainCard } from "./DomainCard";
 
 export const metadata = { title: "Settings" };
 
@@ -19,10 +20,11 @@ export default async function SettingsPage() {
           <Card title="Your storefront">
             <p className="text-sm text-slate-600">Share this link with customers:</p>
             <a href={url} target="_blank" className="mt-2 block break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-teal-700">{url}</a>
-            <p className="mt-3 text-xs text-slate-500">
-              Embed the chat widget anywhere by linking to this page, or point your own domain at it with a reverse proxy.
-            </p>
+            {business.customDomain && business.customDomainVerified && (
+              <a href={`https://${business.customDomain}`} target="_blank" className="mt-2 block break-all rounded-lg bg-emerald-50 px-3 py-2 font-mono text-xs text-emerald-700">https://{business.customDomain}</a>
+            )}
           </Card>
+          <DomainCard business={business} />
           <Card title="Integrations">
             <ul className="space-y-2 text-sm">
               <li><span className="font-medium">Claude AI</span> — set <span className="font-mono text-xs">ANTHROPIC_API_KEY</span> {process.env.ANTHROPIC_API_KEY ? <span className="text-emerald-700">(connected)</span> : <span className="text-amber-700">(not set)</span>}</li>

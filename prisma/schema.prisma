@@ -67,6 +67,11 @@ model Business {
   suspended  Boolean @default(false)
   adminNotes String  @default("")
 
+  // Custom domain (e.g. www.peakgear.com) pointing at this storefront
+  customDomain         String?   @unique
+  customDomainVerified Boolean   @default(false)
+  customDomainAddedAt  DateTime?
+
   // Stripe Connect (the business's own Stripe account; direct charges)
   country              String  @default("US")
   stripeAccountId      String? @unique

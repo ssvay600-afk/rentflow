@@ -109,6 +109,9 @@ export default async function AdminBusinessDetail({ params }: { params: Promise<
           <Card title="Details">
             <dl className="space-y-1 text-sm text-slate-600">
               <div><dt className="text-xs uppercase text-slate-400">Storefront</dt><dd>/s/{business.slug}</dd></div>
+              {business.customDomain && (
+                <div><dt className="text-xs uppercase text-slate-400">Custom domain</dt><dd><a href={`https://${business.customDomain}`} target="_blank" className="text-teal-700 hover:underline">{business.customDomain}</a> · {business.customDomainVerified ? <span className="text-emerald-700">live</span> : <span className="text-amber-700">pending DNS</span>}</dd></div>
+              )}
               <div><dt className="text-xs uppercase text-slate-400">Contact</dt><dd>{business.email || "—"} {business.phone && `· ${business.phone}`}</dd></div>
               <div><dt className="text-xs uppercase text-slate-400">Country / currency</dt><dd>{business.country} · {business.currency}</dd></div>
               <div><dt className="text-xs uppercase text-slate-400">Bot</dt><dd>{business.botEnabled ? "Enabled" : "Disabled"}</dd></div>
