@@ -14,9 +14,10 @@ datasource db {
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
-  passwordHash String
-  name         String
-  createdAt    DateTime  @default(now())
+  passwordHash    String
+  name            String
+  isPlatformAdmin Boolean   @default(false)
+  createdAt       DateTime  @default(now())
   sessions     Session[]
   business     Business?
 }
@@ -61,6 +62,10 @@ model Business {
   remindPaymentDue  Boolean @default(true)
   autoSendReminders Boolean @default(false)
   lowStockThreshold Int     @default(2)
+
+  // Platform administration
+  suspended  Boolean @default(false)
+  adminNotes String  @default("")
 
   // Stripe Connect (the business's own Stripe account; direct charges)
   country              String  @default("US")

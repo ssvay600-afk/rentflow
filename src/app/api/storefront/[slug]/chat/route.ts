@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const business = await prisma.business.findUnique({ where: { slug } });
   if (!business) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!business.botEnabled) return NextResponse.json({ error: "Chat is disabled" }, { status: 403 });
+  if (!business.botEnabled || business.suspended) return NextResponse.json({ error: "Chat is disabled" }, { status: 403 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid message" }, { status: 400 });

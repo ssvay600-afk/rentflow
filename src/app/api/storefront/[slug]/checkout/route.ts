@@ -21,6 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const business = await prisma.business.findUnique({ where: { slug } });
   if (!business) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (business.suspended) return NextResponse.json({ error: "This business is not accepting bookings right now." }, { status: 403 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Please fill in all required fields." }, { status: 400 });

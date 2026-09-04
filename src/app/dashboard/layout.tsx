@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireBusiness } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { billingState } from "@/lib/billing";
+import { isPlatformAdmin } from "@/lib/admin";
 import { logout } from "@/app/(auth)/actions";
 import { Nav } from "./Nav";
 
@@ -40,6 +41,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
           }}
         />
         <div className="mt-auto space-y-2 px-3 pt-6">
+          {isPlatformAdmin(user) && (
+            <Link href="/admin" className="block rounded-lg bg-slate-900 px-3 py-2 text-center text-xs font-medium text-white hover:bg-slate-800">
+              Platform admin →
+            </Link>
+          )}
           <Link href="/billing" className="block text-xs text-slate-500 hover:text-slate-800">
             Plan: {billing.label}
           </Link>
@@ -68,7 +74,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </div>
         <main className="mx-auto max-w-6xl p-4 md:p-8">
-          {billing.kind === "locked" ? (
+          {business.suspended ? (
+            <div className="mx-auto max-w-lg py-16 text-center">
+              <h1 className="text-2xl font-semibold">This business has been suspended</h1>
+              <p className="mt-2 text-slate-600">
+                Your storefront and dashboard are paused by the RentFlow team. Please contact support to resolve this.
+              </p>
+            </div>
+          ) : billing.kind === "locked" ? (
             <div className="mx-auto max-w-lg py-16 text-center">
               <h1 className="text-2xl font-semibold">Your free trial has ended</h1>
               <p className="mt-2 text-slate-600">

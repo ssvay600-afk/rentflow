@@ -15,6 +15,17 @@ export default async function StorefrontLayout({ children, params }: { children:
   const business = await prisma.business.findUnique({ where: { slug } });
   if (!business) notFound();
 
+  if (business.suspended) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
+        <div>
+          <h1 className="text-2xl font-semibold">{business.name} is temporarily unavailable</h1>
+          <p className="mt-2 text-slate-600">Online bookings are paused. Please check back later.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white" style={{ "--brand": business.primaryColor } as CSSProperties}>
       <header className="border-b border-slate-100">
