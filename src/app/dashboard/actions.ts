@@ -8,7 +8,20 @@ import { ORDER_STATUSES, nextStatuses, parseDateInput, slugify } from "@/lib/for
 import { AvailabilityError, createOrder } from "@/lib/orders";
 import { runReminderAgent, sendReminder as deliverReminder } from "@/lib/reminders";
 import { createOnboardingLink, ensureConnectedAccount, refundStripePayment, syncAccountStatus } from "@/lib/stripe";
-import { addDomainToVercel, getDomainStatus, normalizeDomain, removeDomainFromVercel } from "@/lib/domains";
+import {
+  addDomainToVercel,
+  domainRetailPrice,
+  getDomainStatus,
+  normalizeDomain,
+  normalizePhone,
+  quoteDomain,
+  removeDomainFromVercel,
+  searchDomains,
+  type DomainSearchResult,
+  type RegistrantContact,
+} from "@/lib/domains";
+import { settleDomainPurchase } from "@/lib/domain-purchases";
+import { createDomainCheckout } from "@/lib/stripe";
 
 export type ActionState = { error?: string; success?: string };
 
@@ -353,6 +366,70 @@ export async function removeCustomDomain() {
     where: { id: business.id },
     data: { customDomain: null, customDomainVerified: false, customDomainAddedAt: null },
   });
+  refresh();
+}
+
+// ---------------------------------------------------------------------------
+// Buying a domain
+// ---------------------------------------------------------------------------
+
+export type DomainSearchState = { query?: string; results?: DomainSearchResult[]; error?: string };
+
+export async function searchDomainsAction(_prev: DomainSearchState, formData: FormData): Promise<DomainSearchState> {
+  await requireBusiness();
+  const query = String(formData.get("query") ?? "");
+  const { results, error } = await searchDomains(query);
+  return { query, results, error };
+}
+
+export async function startDomainPurchase(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { business, user } = await requireBusiness();
+  const domain = normalizeDomain(String(formData.get("domain") ?? ""));
+  if (!domain) return { error: "Invalid domain." };
+  const country = String(formData.get("country") ?? business.country).toUpperCase().slice(0, 2);
+  const contact: RegistrantContact = {
+    firstName: String(formData.get("firstName") ?? "").trim(),
+    lastName: String(formData.get("lastName") ?? "").trim(),
+    email: String(formData.get("email") ?? user.email).trim(),
+    phone: normalizePhone(String(formData.get("phone") ?? ""), country),
+    address1: String(formData.get("address1") ?? "").trim(),
+    address2: String(formData.get("address2") ?? "").trim() || undefined,
+    city: String(formData.get("city") ?? "").trim(),
+    state: String(formData.get("state") ?? "").trim(),
+    zip: String(formData.get("zip") ?? "").trim(),
+    country,
+    companyName: business.name,
+  };
+  for (const [k, v] of Object.entries(contact)) {
+    if (["address2", "companyName"].includes(k)) continue;
+    if (!v) return { error: `Please fill in the registrant ${k === "address1" ? "street address" : k}.` };
+  }
+  const quote = await quoteDomain(domain).catch(() => null);
+  if (!quote) return { error: "Could not get a price for that domain right now." };
+  if (!quote.available) return { error: `${domain} is no longer available.` };
+
+  const purchase = await prisma.domainPurchase.create({
+    data: {
+      businessId: business.id,
+      domain,
+      years: 1,
+      vercelPrice: quote.vercelPrice,
+      renewalPrice: quote.renewalPrice,
+      price: domainRetailPrice(quote.vercelPrice),
+      contactJson: JSON.stringify(contact),
+    },
+  });
+  const session = await createDomainCheckout(business, purchase);
+  await prisma.domainPurchase.update({ where: { id: purchase.id }, data: { stripeSessionId: session.id } });
+  if (!session.url) return { error: "Stripe did not return a checkout URL." };
+  redirect(session.url);
+}
+
+export async function checkDomainPurchase(purchaseId: string) {
+  const { business } = await requireBusiness();
+  const purchase = await prisma.domainPurchase.findFirst({ where: { id: purchaseId, businessId: business.id } });
+  if (!purchase) return;
+  await settleDomainPurchase(purchaseId, 8_000);
   refresh();
 }
 

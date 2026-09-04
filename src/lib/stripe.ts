@@ -241,6 +241,39 @@ export async function createSubscriptionCheckout(business: Business, planKey: Pl
   });
 }
 
+/** One-time Checkout on the platform account for a domain bought through RentFlow. */
+export async function createDomainCheckout(business: Business, purchase: { id: string; domain: string; years: number; price: number }) {
+  const stripe = getStripe();
+  if (!stripe) throw new Error("Stripe is not configured");
+  const base = appUrl();
+  return stripe.checkout.sessions.create({
+    mode: "payment",
+    ui_mode: "hosted_page",
+    billing_address_collection: "auto",
+    phone_number_collection: { enabled: false },
+    automatic_tax: { enabled: false },
+    allow_promotion_codes: false,
+    submit_type: "auto",
+    origin_context: "web",
+    customer_email: business.email || undefined,
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "usd",
+          unit_amount: purchase.price,
+          product_data: { name: `Domain registration: ${purchase.domain}`, description: `${purchase.years}-year registration, set up on your RentFlow storefront` },
+        },
+      },
+    ],
+    metadata: { domainPurchaseId: purchase.id, businessId: business.id },
+    payment_intent_data: { metadata: { domainPurchaseId: purchase.id, businessId: business.id } },
+    integration_identifier: "hosted_web_0001",
+    success_url: `${base}/dashboard/settings?domain=paid`,
+    cancel_url: `${base}/dashboard/settings?domain=cancelled`,
+  });
+}
+
 /**
  * Changes the plan on an existing active/trialing subscription in place
  * (prorated), instead of starting a second subscription through Checkout.

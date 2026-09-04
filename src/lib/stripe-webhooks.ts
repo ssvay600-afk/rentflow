@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import { markPaymentFailed, markPaymentPaid } from "./payments";
 import { applySubscription, getStripe, syncAccountStatus } from "./stripe";
+import { onDomainPaymentSucceeded } from "./domain-purchases";
 
 /** Records the event id; returns true if it was already handled (Stripe retries deliveries). */
 async function alreadyProcessed(event: Stripe.Event) {
@@ -23,11 +24,16 @@ export async function handlePlatformEvent(event: Stripe.Event) {
   if (await alreadyProcessed(event)) return;
   const stripe = getStripe();
   switch (event.type) {
-    case "checkout.session.completed": {
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded": {
       const session = event.data.object;
       if (session.mode === "subscription" && session.subscription && stripe) {
         const subId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
         await applySubscription(await stripe.subscriptions.retrieve(subId));
+      }
+      const domainPurchaseId = session.metadata?.domainPurchaseId;
+      if (domainPurchaseId && session.payment_status !== "unpaid") {
+        await onDomainPaymentSucceeded(domainPurchaseId, typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id);
       }
       break;
     }
