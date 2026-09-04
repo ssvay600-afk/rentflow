@@ -21,6 +21,7 @@ import {
   type RegistrantContact,
 } from "@/lib/domains";
 import { settleDomainPurchase } from "@/lib/domain-purchases";
+import { normalizeSocial } from "@/lib/social";
 import { createDomainCheckout } from "@/lib/stripe";
 
 export type ActionState = { error?: string; success?: string };
@@ -461,6 +462,9 @@ export async function saveBusinessSettings(_prev: ActionState, formData: FormDat
       phone: String(formData.get("phone") ?? "").trim(),
       address: String(formData.get("address") ?? "").trim(),
       country: String(formData.get("country") ?? "US").toUpperCase().slice(0, 2) || "US",
+      facebookUrl: normalizeSocial("facebook", String(formData.get("facebookUrl") ?? "")),
+      instagramUrl: normalizeSocial("instagram", String(formData.get("instagramUrl") ?? "")),
+      tiktokUrl: normalizeSocial("tiktok", String(formData.get("tiktokUrl") ?? "")),
       taxRate: Math.max(0, Number(formData.get("taxRate") ?? 0) || 0),
       lowStockThreshold: Math.max(0, Number(formData.get("lowStockThreshold") ?? 2) || 0),
     },

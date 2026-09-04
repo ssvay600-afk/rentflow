@@ -7,6 +7,7 @@ import { CLAUDE_MODEL, describeAiError, getClaude } from "./ai";
 import { formatDate, formatMoney, parseDateInput, rentalDays } from "./format";
 import { AvailabilityError, buildQuote, createOrder, getAvailability, paidAmount } from "./orders";
 import { STATUS_LABEL } from "./format";
+import { socialLinks } from "./social";
 
 const HISTORY_LIMIT = 20;
 
@@ -201,6 +202,7 @@ export async function answerCustomer(business: Business, conversationId: string,
         (business.phone ? `Phone: ${business.phone}\n` : "") +
         (business.email ? `Email: ${business.email}\n` : "") +
         (business.address ? `Address: ${business.address}\n` : "") +
+        (socialLinks(business).length ? `Social: ${socialLinks(business).map((s) => `${s.label} ${s.url}`).join(", ")}\n` : "") +
         `Currency: ${business.currency}\n\nPolicies & FAQ:\n${business.policies || "(none provided)"}`,
       cache_control: { type: "ephemeral" },
     },

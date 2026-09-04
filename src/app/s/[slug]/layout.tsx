@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { prisma } from "@/lib/db";
 import { ChatWidget } from "@/components/ChatWidget";
+import { SocialIcons } from "@/components/SocialIcons";
+import { socialLinks } from "@/lib/social";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -42,6 +44,7 @@ export default async function StorefrontLayout({ children, params }: { children:
             <span className="text-lg font-semibold tracking-tight">{business.name}</span>
           </Link>
           <nav className="flex items-center gap-4 text-sm text-slate-600">
+            <SocialIcons business={business} size="sm" className="hidden sm:inline-flex" />
             {business.phone && <a href={`tel:${business.phone}`} className="hidden sm:inline">{business.phone}</a>}
             <Link href={`/s/${business.slug}#book`} className="btn-brand">Book now</Link>
           </nav>
@@ -53,6 +56,12 @@ export default async function StorefrontLayout({ children, params }: { children:
           <div>
             <p className="font-semibold text-slate-900">{business.name}</p>
             {business.tagline && <p className="mt-1">{business.tagline}</p>}
+            {socialLinks(business).length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-slate-500 uppercase">Follow us</p>
+                <SocialIcons business={business} className="mt-1" />
+              </div>
+            )}
           </div>
           <div>
             <p className="font-semibold text-slate-900">Contact</p>

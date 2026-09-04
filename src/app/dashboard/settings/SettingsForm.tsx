@@ -43,6 +43,16 @@ export function SettingsForm({ business }: { business: Business }) {
       </section>
 
       <section className="card space-y-4 p-6">
+        <h2 className="text-sm font-semibold text-slate-700">Social links</h2>
+        <p className="text-xs text-slate-500">Shown as icons in your storefront header and footer. Paste a full link or just your handle.</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <label className="block"><span className="label">Facebook</span><input name="facebookUrl" defaultValue={business.facebookUrl} placeholder="facebook.com/yourpage" className="input" /></label>
+          <label className="block"><span className="label">Instagram</span><input name="instagramUrl" defaultValue={business.instagramUrl} placeholder="@yourhandle" className="input" /></label>
+          <label className="block"><span className="label">TikTok</span><input name="tiktokUrl" defaultValue={business.tiktokUrl} placeholder="@yourhandle" className="input" /></label>
+        </div>
+      </section>
+
+      <section className="card space-y-4 p-6">
         <h2 className="text-sm font-semibold text-slate-700">Pricing & inventory</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block"><span className="label">Tax rate (%)</span><input name="taxRate" type="number" step="0.01" min="0" defaultValue={business.taxRate} className="input" /></label>

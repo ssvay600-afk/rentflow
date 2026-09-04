@@ -50,6 +50,11 @@ model Business {
   address      String  @default("")
   taxRate      Float   @default(0) // percent, e.g. 8.25
 
+  // Social links shown on the storefront
+  facebookUrl  String @default("")
+  instagramUrl String @default("")
+  tiktokUrl    String @default("")
+
   // Knowledge base the support bot uses (policies, FAQ, hours...)
   policies    String  @default("")
   botEnabled  Boolean @default(true)
