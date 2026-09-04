@@ -21,6 +21,9 @@ const csp = [
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
   serverExternalPackages: ["@prisma/client", "nodemailer"],
+  experimental: {
+    serverActions: { bodySizeLimit: "12mb" },
+  },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },

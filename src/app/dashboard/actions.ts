@@ -24,12 +24,23 @@ import { settleDomainPurchase } from "@/lib/domain-purchases";
 import { normalizeSocial } from "@/lib/social";
 import { sendOrderConfirmation, sendOrderStatusEmail, sendPaymentReceipt, sendRefundNotice, sendTestEmail } from "@/lib/notifications";
 import { appUrl } from "@/lib/stripe";
+import { pickedFile, uploadImage } from "@/lib/uploads";
 import { createDomainCheckout } from "@/lib/stripe";
 
 export type ActionState = { error?: string; success?: string };
 
 function refresh() {
   revalidatePath("/dashboard", "layout");
+}
+
+/** Resolves an ImageField submission: uploaded file > pasted link > removal > unchanged. */
+async function resolveImage(formData: FormData, name: string, current: string, prefix: string) {
+  const file = pickedFile(formData, `${name}File`);
+  if (file) return uploadImage(file, prefix);
+  if (formData.get(`${name}Remove`) === "on") return "";
+  const url = String(formData.get(`${name}Url`) ?? "").trim();
+  if (url && !/^https?:\/\//i.test(url)) throw new Error("Image link must start with https://");
+  return url || (formData.has(`${name}Url`) ? "" : current);
 }
 
 function dollarsToCents(value: FormDataEntryValue | null) {
@@ -196,11 +207,18 @@ export async function saveItem(_prev: ActionState, formData: FormData): Promise<
   const pricePerDay = dollarsToCents(formData.get("pricePerDay"));
   if (pricePerDay <= 0) return { error: "Price per day must be greater than zero." };
   const categoryId = String(formData.get("categoryId") ?? "") || null;
+  const existingForImage = id ? await prisma.item.findFirst({ where: { id, businessId: business.id }, select: { imageUrl: true } }) : null;
+  let imageUrl: string;
+  try {
+    imageUrl = await resolveImage(formData, "image", existingForImage?.imageUrl ?? "", `businesses/${business.id}/items/${id || "new"}`);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Image upload failed." };
+  }
   const data = {
     name,
     sku: String(formData.get("sku") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim(),
-    imageUrl: String(formData.get("imageUrl") ?? "").trim(),
+    imageUrl,
     pricePerDay,
     deposit: dollarsToCents(formData.get("deposit")),
     quantity: Math.max(0, Number(formData.get("quantity") ?? 1) || 0),
@@ -466,6 +484,14 @@ export async function saveBusinessSettings(_prev: ActionState, formData: FormDat
   const clash = await prisma.business.findFirst({ where: { slug, id: { not: business.id } } });
   if (clash) return { error: "That storefront link is already taken." };
   const color = String(formData.get("primaryColor") ?? "#0f766e");
+  let logoUrl = business.logoUrl;
+  let heroImageUrl = business.heroImageUrl;
+  try {
+    logoUrl = await resolveImage(formData, "logo", business.logoUrl, `businesses/${business.id}/logo`);
+    heroImageUrl = await resolveImage(formData, "hero", business.heroImageUrl, `businesses/${business.id}/cover`);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Image upload failed." };
+  }
   await prisma.business.update({
     where: { id: business.id },
     data: {
@@ -473,8 +499,8 @@ export async function saveBusinessSettings(_prev: ActionState, formData: FormDat
       slug,
       tagline: String(formData.get("tagline") ?? "").trim(),
       description: String(formData.get("description") ?? "").trim(),
-      logoUrl: String(formData.get("logoUrl") ?? "").trim(),
-      heroImageUrl: String(formData.get("heroImageUrl") ?? "").trim(),
+      logoUrl,
+      heroImageUrl,
       primaryColor: /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0f766e",
       currency: String(formData.get("currency") ?? "USD").toUpperCase().slice(0, 3),
       email: String(formData.get("email") ?? "").trim(),

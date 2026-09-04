@@ -3,11 +3,12 @@
 import { useActionState } from "react";
 import type { Business } from "@prisma/client";
 import { saveBusinessSettings, type ActionState } from "../actions";
+import { ImageField } from "@/components/ImageField";
 
-export function SettingsForm({ business }: { business: Business }) {
+export function SettingsForm({ business, uploadsEnabled }: { business: Business; uploadsEnabled: boolean }) {
   const [state, formAction, pending] = useActionState(saveBusinessSettings, {} as ActionState);
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} encType="multipart/form-data" className="space-y-6">
       {state.error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}
       {state.success && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{state.success}</p>}
 
@@ -33,13 +34,11 @@ export function SettingsForm({ business }: { business: Business }) {
         </div>
       </section>
 
-      <section className="card space-y-4 p-6">
+      <section className="card space-y-5 p-6">
         <h2 className="text-sm font-semibold text-slate-700">Storefront branding</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label className="block"><span className="label">Brand colour</span><input name="primaryColor" type="color" defaultValue={business.primaryColor} className="input h-10 p-1" /></label>
-          <label className="block sm:col-span-2"><span className="label">Logo URL</span><input name="logoUrl" defaultValue={business.logoUrl} className="input" placeholder="https://…/logo.png" /></label>
-        </div>
-        <label className="block"><span className="label">Hero image URL</span><input name="heroImageUrl" defaultValue={business.heroImageUrl} className="input" placeholder="https://…/hero.jpg" /></label>
+        <label className="block sm:w-48"><span className="label">Brand colour</span><input name="primaryColor" type="color" defaultValue={business.primaryColor} className="input h-10 p-1" /></label>
+        <ImageField name="logo" label="Logo / profile picture" current={business.logoUrl} shape="logo" placeholderText="Your initial is shown until you add a logo" hint="Square works best. JPG, PNG or WebP, up to 5 MB." uploadsEnabled={uploadsEnabled} />
+        <ImageField name="hero" label="Background / cover picture" current={business.heroImageUrl} shape="wide" placeholderText="Your brand colour is shown until you add a cover picture" hint="Wide landscape photo (e.g. 1600×600). JPG, PNG or WebP, up to 5 MB." uploadsEnabled={uploadsEnabled} />
       </section>
 
       <section className="card space-y-4 p-6">

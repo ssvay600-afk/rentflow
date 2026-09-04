@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { formatDateRange } from "@/lib/format";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ItemForm } from "../ItemForm";
+import { uploadsConfigured } from "@/lib/uploads";
 
 export default async function EditItemPage({ params }: { params: Promise<{ id: string }> }) {
   const { business } = await requireBusiness();
@@ -25,7 +26,7 @@ export default async function EditItemPage({ params }: { params: Promise<{ id: s
       <PageHeader title={item.name} subtitle="Edit item details and see upcoming bookings." />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <ItemForm item={item} categories={categories} />
+          <ItemForm item={item} categories={categories} uploadsEnabled={uploadsConfigured()} />
         </div>
         <Card title="Upcoming bookings">
           {bookings.length === 0 ? (

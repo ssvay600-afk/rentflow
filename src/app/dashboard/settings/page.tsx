@@ -3,6 +3,7 @@ import { appUrl } from "@/lib/stripe";
 import { Alert, Card, PageHeader } from "@/components/ui";
 import { SettingsForm } from "./SettingsForm";
 import { DomainCard } from "./DomainCard";
+import { uploadsConfigured } from "@/lib/uploads";
 
 export const metadata = { title: "Settings" };
 
@@ -21,7 +22,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       )}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <SettingsForm business={business} />
+          <SettingsForm business={business} uploadsEnabled={uploadsConfigured()} />
         </div>
         <div className="space-y-6">
           <Card title="Your storefront">
