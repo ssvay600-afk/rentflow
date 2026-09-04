@@ -1,7 +1,7 @@
 import type { Business, Customer, Order, OrderItem, Item } from "@prisma/client";
 import { prisma } from "./db";
 import { CLAUDE_MODEL, describeAiError, getClaude } from "./ai";
-import { formatDate, formatMoney } from "./format";
+import { formatAddress, formatDate, formatMoney } from "./format";
 import { sendEmail } from "./mailer";
 import { paidAmount } from "./orders";
 
@@ -62,10 +62,15 @@ function templateMessage(business: Business, order: OrderWithDetails, type: Remi
   const sig = `\n\n— ${business.name}${business.phone ? ` · ${business.phone}` : ""}${business.address ? `\n${business.address}` : ""}`;
   switch (type) {
     case "pickup":
-      return {
-        subject: `Your ${business.name} rental starts ${formatDate(order.startDate)}`,
-        body: `Hi ${first},\n\nA quick reminder that your rental (order #${order.orderNumber}: ${items}) is ready for pickup on ${formatDate(order.startDate)}.\n\nPlease bring a photo ID. Reply to this email if your plans change.${sig}`,
-      };
+      return order.fulfillment === "pickup"
+        ? {
+            subject: `Your ${business.name} rental starts ${formatDate(order.startDate)}`,
+            body: `Hi ${first},\n\nA quick reminder that your rental (order #${order.orderNumber}: ${items}) is ready for pickup on ${formatDate(order.startDate)}.\n\nPlease bring a photo ID. Reply to this email if your plans change.${sig}`,
+          }
+        : {
+            subject: `Your ${business.name} delivery is on ${formatDate(order.startDate)}`,
+            body: `Hi ${first},\n\nA quick reminder that we'll deliver your order #${order.orderNumber} (${items}) on ${formatDate(order.startDate)} to ${formatAddress(order)}.\n\nPlease make sure someone is there to receive it. Reply to this email if anything has changed.${sig}`,
+          };
     case "return":
       return {
         subject: `Reminder: return your rental by ${formatDate(order.endDate)}`,
@@ -110,6 +115,8 @@ async function composeMessage(business: Business, order: OrderWithDetails, type:
     `Items: ${order.items.map((l) => `${l.quantity}× ${l.item.name}`).join(", ")}`,
     `Pickup: ${formatDate(order.startDate)}`,
     `Return: ${formatDate(order.endDate)}`,
+    `Fulfillment: ${order.fulfillment === "pickup" ? "customer picks up in store" : `deliver/serve at ${formatAddress(order)}`}`,
+    order.customer.phone ? `Customer phone: ${order.customer.phone}` : "",
     `Order total: ${formatMoney(order.total, business.currency)}`,
     `Outstanding balance: ${formatMoney(balance, business.currency)}`,
     order.notes ? `Order notes: ${order.notes}` : "",

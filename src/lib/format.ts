@@ -51,6 +51,15 @@ export function daysFromNow(d: Date) {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+export type AddressLike = { fulfillment: string; addressLine1: string; addressLine2: string; city: string; region: string; postalCode: string };
+
+/** One-line service address, or "Pickup in store" for pickup orders. */
+export function formatAddress(o: AddressLike) {
+  if (o.fulfillment === "pickup") return "Pickup in store";
+  const parts = [o.addressLine1, o.addressLine2, [o.city, o.region].filter(Boolean).join(", "), o.postalCode].filter((s) => s && s.trim());
+  return parts.join(", ") || "No address given";
+}
+
 export function slugify(input: string) {
   return input
     .toLowerCase()

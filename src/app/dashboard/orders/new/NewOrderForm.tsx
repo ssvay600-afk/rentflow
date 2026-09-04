@@ -78,6 +78,20 @@ export function NewOrderForm({ items, currency, taxRate }: { items: ItemOption[]
             <label className="block"><span className="label">Email</span><input name="customerEmail" type="email" className="input" required /></label>
             <label className="block"><span className="label">Phone</span><input name="customerPhone" className="input" /></label>
           </div>
+          <div className="mt-4">
+            <span className="label">Fulfillment</span>
+            <div className="flex gap-4 text-sm">
+              <label className="flex items-center gap-2"><input type="radio" name="fulfillment" value="delivery" defaultChecked /> Deliver / serve at address</label>
+              <label className="flex items-center gap-2"><input type="radio" name="fulfillment" value="pickup" /> Customer picks up</label>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block sm:col-span-2"><span className="label">Street address</span><input name="addressLine1" className="input" /></label>
+            <label className="block sm:col-span-2"><span className="label">Apt, suite, venue</span><input name="addressLine2" className="input" /></label>
+            <label className="block"><span className="label">City</span><input name="city" className="input" /></label>
+            <label className="block"><span className="label">State / region</span><input name="region" className="input" /></label>
+            <label className="block"><span className="label">Postal code</span><input name="postalCode" className="input" /></label>
+          </div>
           <label className="mt-4 block"><span className="label">Notes</span><textarea name="notes" rows={2} className="input" /></label>
         </section>
       </div>

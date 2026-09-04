@@ -99,7 +99,16 @@ export class AvailabilityError extends Error {
   }
 }
 
-export type CreateOrderInput = {
+export type ServiceAddress = {
+  fulfillment?: "delivery" | "pickup";
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+};
+
+export type CreateOrderInput = ServiceAddress & {
   businessId: string;
   customer: { name: string; email: string; phone?: string };
   lines: { itemId: string; quantity: number }[];
@@ -159,6 +168,12 @@ export async function createOrder(input: CreateOrderInput) {
         total: quote.total,
         notes: input.notes ?? "",
         source: input.source ?? "storefront",
+        fulfillment: input.fulfillment ?? "delivery",
+        addressLine1: input.addressLine1?.trim() ?? "",
+        addressLine2: input.addressLine2?.trim() ?? "",
+        city: input.city?.trim() ?? "",
+        region: input.region?.trim() ?? "",
+        postalCode: input.postalCode?.trim() ?? "",
         items: {
           create: quote.lines.map((l) => ({
             itemId: l.itemId,

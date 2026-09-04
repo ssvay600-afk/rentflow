@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBusiness } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { STATUS_LABEL, formatDate, formatDateTime, formatMoney, nextStatuses } from "@/lib/format";
+import { STATUS_LABEL, formatAddress, formatDate, formatDateTime, formatMoney, nextStatuses } from "@/lib/format";
 import { paidAmount } from "@/lib/orders";
 import { Badge, Card, Field, PageHeader } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -141,9 +141,24 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </Card>
           <Card title="Customer">
             <p className="font-medium">{order.customer.name}</p>
-            <p className="text-sm text-slate-600">{order.customer.email}</p>
-            {order.customer.phone && <p className="text-sm text-slate-600">{order.customer.phone}</p>}
+            <p className="text-sm text-slate-600"><a href={`mailto:${order.customer.email}`} className="hover:underline">{order.customer.email}</a></p>
+            {order.customer.phone && <p className="text-sm text-slate-600"><a href={`tel:${order.customer.phone}`} className="hover:underline">{order.customer.phone}</a></p>}
             <Link href={`/dashboard/customers?q=${encodeURIComponent(order.customer.email)}`} className="mt-2 block text-xs text-teal-700 hover:underline">View history</Link>
+          </Card>
+          <Card title={order.fulfillment === "pickup" ? "Fulfillment" : "Service address"}>
+            {order.fulfillment === "pickup" ? (
+              <p className="text-sm text-slate-700">Customer picks up in store.</p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-700">{order.addressLine1 || <span className="text-amber-700">No street address given</span>}</p>
+                {order.addressLine2 && <p className="text-sm text-slate-700">{order.addressLine2}</p>}
+                <p className="text-sm text-slate-700">{[order.city, order.region].filter(Boolean).join(", ")} {order.postalCode}</p>
+                {order.addressLine1 && (
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddress(order))}`} target="_blank" className="mt-2 block text-xs text-teal-700 hover:underline">Open in Maps ↗</a>
+                )}
+              </>
+            )}
+            {order.notes && <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600"><span className="font-medium">Customer notes:</span> {order.notes}</p>}
           </Card>
           <Card title="Internal notes">
             <form action={updateOrderNotes.bind(null, order.id)} className="space-y-2">

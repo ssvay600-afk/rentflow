@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { STATUS_LABEL, formatDate, formatMoney } from "@/lib/format";
+import { STATUS_LABEL, formatAddress, formatDate, formatMoney } from "@/lib/format";
 import { paidAmount } from "@/lib/orders";
 import { payOrder } from "../../actions";
 
@@ -92,7 +92,9 @@ export default async function CustomerOrderPage({
 
       <div className="mt-8 text-sm text-slate-600">
         <p className="font-medium text-slate-900">{order.customer.name}</p>
-        <p>{order.customer.email}</p>
+        <p>{order.customer.email}{order.customer.phone && ` · ${order.customer.phone}`}</p>
+        <p className="mt-2"><span className="font-medium text-slate-900">{order.fulfillment === "pickup" ? "Pickup" : "Service address"}:</span> {formatAddress(order)}</p>
+        {order.notes && <p className="mt-1"><span className="font-medium text-slate-900">Notes:</span> {order.notes}</p>}
         <p className="mt-4">
           Questions? {business.email && <a href={`mailto:${business.email}`} className="underline">{business.email}</a>}
           {business.phone && <> · {business.phone}</>} · or ask the chat assistant.

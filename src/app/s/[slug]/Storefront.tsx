@@ -26,6 +26,8 @@ export function Storefront({ slug, currency, taxRate, items }: { slug: string; c
   const [availability, setAvailability] = useState<Record<string, number>>({});
   const [checking, setChecking] = useState(false);
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "", notes: "" });
+  const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
+  const [address, setAddress] = useState({ line1: "", line2: "", city: "", region: "", postalCode: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,6 +104,8 @@ export function Storefront({ slug, currency, taxRate, items }: { slug: string; c
             .filter(([, q]) => q > 0)
             .map(([itemId, quantity]) => ({ itemId, quantity })),
           customer,
+          fulfillment,
+          address,
         }),
       });
       const data = await res.json();
@@ -206,10 +210,33 @@ export function Storefront({ slug, currency, taxRate, items }: { slug: string; c
                 <div className="flex justify-between border-t border-slate-200 pt-1 text-base font-semibold"><dt>Total due</dt><dd>{formatMoney(quote.total, currency)}</dd></div>
               </dl>
               <div className="space-y-2">
-                <input required placeholder="Full name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="input" />
-                <input required type="email" placeholder="Email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} className="input" />
-                <input placeholder="Phone (optional)" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} className="input" />
-                <textarea placeholder="Notes (optional)" rows={2} value={customer.notes} onChange={(e) => setCustomer({ ...customer, notes: e.target.value })} className="input" />
+                <p className="label">Your details</p>
+                <input required placeholder="Full name" autoComplete="name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="input" />
+                <input required type="email" placeholder="Email" autoComplete="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} className="input" />
+                <input required type="tel" placeholder="Phone number" autoComplete="tel" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} className="input" />
+              </div>
+              <div className="space-y-2">
+                <p className="label">Where do you need it?</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <label className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 ${fulfillment === "delivery" ? "border-teal-600 bg-teal-50" : "border-slate-200"}`}>
+                    <input type="radio" name="fulfillment" checked={fulfillment === "delivery"} onChange={() => setFulfillment("delivery")} /> Deliver / serve at my address
+                  </label>
+                  <label className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 ${fulfillment === "pickup" ? "border-teal-600 bg-teal-50" : "border-slate-200"}`}>
+                    <input type="radio" name="fulfillment" checked={fulfillment === "pickup"} onChange={() => setFulfillment("pickup")} /> I&apos;ll pick up
+                  </label>
+                </div>
+                {fulfillment === "delivery" && (
+                  <div className="space-y-2">
+                    <input required placeholder="Street address" autoComplete="address-line1" value={address.line1} onChange={(e) => setAddress({ ...address, line1: e.target.value })} className="input" />
+                    <input placeholder="Apt, suite, venue (optional)" autoComplete="address-line2" value={address.line2} onChange={(e) => setAddress({ ...address, line2: e.target.value })} className="input" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input required placeholder="City" autoComplete="address-level2" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} className="input" />
+                      <input placeholder="State / region" autoComplete="address-level1" value={address.region} onChange={(e) => setAddress({ ...address, region: e.target.value })} className="input" />
+                    </div>
+                    <input required placeholder="ZIP / postal code" autoComplete="postal-code" value={address.postalCode} onChange={(e) => setAddress({ ...address, postalCode: e.target.value })} className="input" />
+                  </div>
+                )}
+                <textarea placeholder="Notes: event time, gate code, parking… (optional)" rows={2} value={customer.notes} onChange={(e) => setCustomer({ ...customer, notes: e.target.value })} className="input" />
               </div>
               {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
               <button type="submit" disabled={submitting} className="btn-brand w-full py-3">

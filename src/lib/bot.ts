@@ -123,6 +123,11 @@ export async function answerCustomer(business: Business, conversationId: string,
       start_date: z.string().describe("YYYY-MM-DD"),
       end_date: z.string().describe("YYYY-MM-DD"),
       lines: z.array(z.object({ item_name: z.string(), quantity: z.number().int().min(1) })).min(1),
+      fulfillment: z.enum(["delivery", "pickup"]).describe("delivery = deliver/serve at the customer's address; pickup = customer collects in store"),
+      address_line1: z.string().optional().describe("Street address, required for delivery"),
+      city: z.string().optional(),
+      region: z.string().optional(),
+      postal_code: z.string().optional(),
       notes: z.string().optional(),
     }),
     run: async (input) => {
@@ -135,6 +140,9 @@ export async function answerCustomer(business: Business, conversationId: string,
         if (!item) return `Unknown item "${l.item_name}".`;
         lines.push({ itemId: item.id, quantity: l.quantity });
       }
+      if (input.fulfillment === "delivery" && !(input.address_line1 && input.city)) {
+        return "For delivery I need the street address and city (and postal code). Ask the customer, or offer pickup instead.";
+      }
       try {
         const order = await createOrder({
           businessId: business.id,
@@ -144,6 +152,11 @@ export async function answerCustomer(business: Business, conversationId: string,
           endDate: end,
           notes: input.notes,
           source: "bot",
+          fulfillment: input.fulfillment,
+          addressLine1: input.address_line1,
+          city: input.city,
+          region: input.region,
+          postalCode: input.postal_code,
         });
         await prisma.conversation.update({
           where: { id: conversationId },
@@ -179,7 +192,7 @@ export async function answerCustomer(business: Business, conversationId: string,
   const system: Anthropic.TextBlockParam[] = [
     {
       type: "text",
-      text: `You are ${business.botName}, the customer-service assistant for ${business.name}, a rental business. Be concise, friendly and accurate. Use the tools to check inventory, availability, prices and orders instead of guessing. Never reveal other customers' details. Only create a booking after the customer has confirmed items, dates, their name and email. If you can't help or the customer asks for a person, use escalate_to_human. Answer in plain text without markdown. Today's date is ${formatDate(new Date())}.`,
+      text: `You are ${business.botName}, the customer-service assistant for ${business.name}, a rental business. Be concise, friendly and accurate. Use the tools to check inventory, availability, prices and orders instead of guessing. Never reveal other customers' details. Only create a booking after the customer has confirmed items, dates, their name, email and phone number, and either a full delivery/service address or that they will pick up in store. If you can't help or the customer asks for a person, use escalate_to_human. Answer in plain text without markdown. Today's date is ${formatDate(new Date())}.`,
     },
     {
       type: "text",

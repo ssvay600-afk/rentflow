@@ -71,6 +71,12 @@ export async function createManualOrder(_prev: ActionState, formData: FormData):
       notes: String(formData.get("notes") ?? ""),
       source: "manual",
       status: formData.get("confirm") ? "CONFIRMED" : "PENDING",
+      fulfillment: formData.get("fulfillment") === "pickup" ? "pickup" : "delivery",
+      addressLine1: String(formData.get("addressLine1") ?? ""),
+      addressLine2: String(formData.get("addressLine2") ?? ""),
+      city: String(formData.get("city") ?? ""),
+      region: String(formData.get("region") ?? ""),
+      postalCode: String(formData.get("postalCode") ?? ""),
     });
     orderId = order.id;
   } catch (error) {

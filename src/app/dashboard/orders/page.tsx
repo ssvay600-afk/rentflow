@@ -55,7 +55,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         <div className="card overflow-x-auto">
           <table className="table">
             <thead>
-              <tr><th>Order</th><th>Customer</th><th>Items</th><th>Dates</th><th>Total</th><th>Paid</th><th>Status</th></tr>
+              <tr><th>Order</th><th>Customer</th><th>Items</th><th>Where</th><th>Dates</th><th>Total</th><th>Paid</th><th>Status</th></tr>
             </thead>
             <tbody>
               {orders.map((o) => {
@@ -63,8 +63,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                 return (
                   <LinkRow key={o.id} href={`/dashboard/orders/${o.id}`}>
                     <td><Link href={`/dashboard/orders/${o.id}`} className="font-medium text-teal-700 hover:underline">#{o.orderNumber}</Link><div className="text-xs text-slate-400">{o.source}</div></td>
-                    <td>{o.customer.name}<div className="text-xs text-slate-500">{o.customer.email}</div></td>
+                    <td>{o.customer.name}<div className="text-xs text-slate-500">{o.customer.phone || o.customer.email}</div></td>
                     <td className="max-w-xs truncate text-slate-600">{o.items.map((l) => `${l.quantity}× ${l.item.name}`).join(", ")}</td>
+                    <td className="max-w-[12rem] truncate text-xs text-slate-600">{o.fulfillment === "pickup" ? "Pickup" : [o.city, o.postalCode].filter(Boolean).join(" ") || "No address"}</td>
                     <td className="whitespace-nowrap text-slate-600">{formatDateRange(o.startDate, o.endDate)}</td>
                     <td>{formatMoney(o.total, business.currency)}</td>
                     <td className={paid >= o.total ? "text-emerald-700" : "text-amber-700"}>{formatMoney(paid, business.currency)}</td>

@@ -171,6 +171,13 @@ model Order {
   total       Int
   notes       String      @default("")
   source      String      @default("storefront") // storefront | manual | bot
+  // Where the rental is delivered / the service happens. "pickup" = customer collects in store.
+  fulfillment  String @default("delivery") // delivery | pickup
+  addressLine1 String @default("")
+  addressLine2 String @default("")
+  city         String @default("")
+  region       String @default("")
+  postalCode   String @default("")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   items       OrderItem[]
